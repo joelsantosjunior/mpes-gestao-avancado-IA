@@ -1,0 +1,168 @@
+---
+title: "Predições para Gestão de Projetos com Regressão Linear Múltipla em R"
+author: "Equipe EducaECO"
+date: '13/08/2025'
+output:
+  pdf_document: default
+  html_document:
+    highlight: espresso
+    theme: cosmo
+params:
+  
+---
+
+```{r setup, include=TRUE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library("dplyr")
+# Bibliotecas necessárias
+library(magrittr)
+library(stringr)
+library(tidyverse)
+
+
+#diretório do projeto
+setwd("c:/R/gestao")
+
+#ler as sprints
+dfsprint=read.csv("sprints.csv",sep=";",fileEncoding="latin1")
+#ler as atividade
+dfativ=read.csv("atividades.csv",sep=";",fileEncoding="latin1")
+
+
+#separa os dados de treino da trilha 1
+dfsprint_treino<-dfsprint[1:5,]
+#separa os dados para a predição da trilha 1
+dfsprint_teste<-dfsprint[6:12,]
+
+#separa os dados de treino trilha 2
+dfativ_treino<-dfativ[1:17,]
+#separa os dados para a predição trilha 2
+dfativ_teste<-dfativ[18:18,]
+
+
+
+
+# Ajustando o modelo de regressão linear múltipla trilha 1
+modelo <- lm(horas_reais ~ story_point + complexidade + horas_estimadas, data = dfsprint_treino)
+
+
+
+# Ajustando o modelo de regressão linear múltipla trilha 2
+modelo2 <- lm(horas_reais ~ story_point + complexidade + dependencia + interrupcao + horas_estimadas, data = dfativ_treino)
+
+
+#verificando a qualidade do modelo trilha 1
+summary(modelo)$r.squared
+summary(modelo)$adj.r.squared
+
+#verificando a qualidade do modelo trilha 2
+summary(modelo2)$r.squared
+summary(modelo2)$adj.r.squared
+
+
+#faz a predição da trilha 1
+dfsprint_teste$horas_previstas <- predict(modelo, newdata = dfsprint_teste)
+
+#faz a predição da trilha 2
+dfativ_teste$horas_previstas <- predict(modelo, newdata = dfativ_teste)
+
+
+#ajustando data_frame para exibir os desvios trilha 1
+dfsprint_treino$horas_previstas=NA
+dfsprint_treino$desvio=(dfsprint_treino$horas_reais - dfsprint_treino$horas_estimadas) / dfsprint_treino$horas_estimadas * 100.0
+
+
+dfsprint_teste$desvio=(dfsprint_teste$horas_previstas - dfsprint_teste$horas_estimadas) / dfsprint_teste$horas_estimadas * 100.0
+
+#desvios trilha 2
+desvio_ativ<-(dfativ_teste$horas_previstas - dfativ_teste$horas_estimadas) / dfativ_teste$horas_estimadas * 100.0
+
+#data frame para exibição dos desvios
+df_desvio<-rbind(dfsprint_treino, dfsprint_teste)
+
+#ajuste para gerar gráfico
+dfgrafico<- df_desvio %>%  pivot_longer(
+  cols = c(horas_reais, horas_previstas,horas_estimadas), # as colunas desse intervalo
+  names_to = "tipo_horas", # terão seus nomes armazenados nessa nova coluna
+  values_to = "qtd_horas") # e os seus valores armazenados nessa nova coluna
+
+
+```
+
+## Predição do tempo das Sprints
+
+Projeto com 12 Sprints — 5 concluídas (com desvios) + 5 futuras (com predição)
+
+Sprints 1–5 concluídas com problemas entre horas estimadas e reais.<br>
+Treinamos um modelo com a função lm() do R base nas sprints 1–5.<br>
+Prevemos as horas reais para as sprints 6–12 e comparamos com o estimado.<br>
+Métricas: R² e R² Ajustado.<br>
+Gráfico: Estimado x Real/Previsto por sprint.<br>
+
+
+``` {r results='asis' , warning=FALSE, message=FALSE}
+
+library(knitr)
+
+kable(df_desvio[,c(1,2,10,11,12,13)], caption= "Desvios  Real/Previsto X Estimado (horas) por Sprint")
+
+```
+
+## Gráfico — Estimado x Real/Previsto (horas) por Sprint
+
+
+```{r results='asis', warning=FALSE, message=FALSE}
+#gerar gráfico com ggplot
+ggplot(dfgrafico,aes(x=sprint,y=qtd_horas,color=tipo_horas,label=qtd_horas))+
+  labs(title="Sprint X Horas",
+       x="Sprint",
+       y="Qtd de Horas",
+       color="Tipo de Horas",
+       fill="Gráfico com as Predições")+
+  geom_line()+
+  geom_label(size=2.2) +
+  theme(axis.text.x=element_text(angle=45,hjust=1,size=10),axis.title=element_text(size=12,face="bold")) 
+ 
+```
+
+## Forma de verificar a qualidade do modelo
+<b>R-quadrado</b>
+
+O R-quadrado é uma medida estatística de quão próximos os dados estão da linha de regressão ajustada. Ele também é conhecido como o coeficiente de determinação ou o coeficiente de determinação múltipla para a regressão múltipla.
+
+A definição do R-quadrado é bastante simples: é a porcentagem da variação da variável resposta que é explicada por um modelo linear. Ou:
+
+R-quadrado = Variação explicada/Variação total
+
+O R-quadrado está sempre entre 0 e 100%:
+
+0% indica que o modelo não explica nada da variabilidade dos dados de resposta ao redor de sua média.
+100% indica que o modelo explica toda a variabilidade dos dados de resposta ao redor de sua média.
+
+<b>R-quadrado ajustado</b>
+
+O R-quadrado ajustado (ou R² ajustado) é uma métrica estatística que avalia a qualidade de um modelo de regressão, levando em consideração o número de variáveis independentes (preditores) e o tamanho da amostra. Ele penaliza a inclusão de variáveis irrelevantes no modelo, ao contrário do R-quadrado simples, que sempre aumenta com a adição de novas variáveis. 
+
+
+## Predição do Tempo da Atividade 1 da Sprint 10 - Trilha 2
+
+
+Sprints 1–5 concluídas com problemas entre horas estimadas e reais das atividades.<br>
+Treinamos um modelo com a função lm() do R base das atividades da sprints 1–5.<br>
+Prevemos as horas reais para a atividade 1 da print 10, que está prevista como a mais complexa da sprint, e comparamos com o estimado.<br>
+Métricas: R² e R² Ajustado.<br>
+
+
+```{r results='asis' , warning=FALSE, message=FALSE}
+
+kable(dfativ_teste[,c(3,4,5,6,7,8,10)], caption= "Previsão da Atividade 1 da Sprint 10")
+```
+
+**Desvio da Atividade:** `r round(desvio_ativ,2)` %&nbsp; &nbsp;
+
+
+
+
+
+
+
