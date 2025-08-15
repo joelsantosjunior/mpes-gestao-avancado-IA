@@ -1,5 +1,5 @@
 # mpes-gestao-avancado-IA
-Atividade da Disciplina de Gestão Avançada - MPES
+Atividade da Disciplina de Gestão Avançada - MPES 2025.1
 
 # Equipe 03
 * Arthur César T. C. de Albuquerque
